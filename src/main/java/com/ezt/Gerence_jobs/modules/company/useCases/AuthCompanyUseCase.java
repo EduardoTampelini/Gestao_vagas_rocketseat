@@ -1,8 +1,11 @@
 package com.ezt.Gerence_jobs.modules.company.useCases;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.ezt.Gerence_jobs.modules.company.dto.AuthCompanyDTO;
 import com.ezt.Gerence_jobs.modules.company.repositories.CompanyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -10,7 +13,9 @@ import org.springframework.stereotype.Service;
 import javax.naming.AuthenticationException;
 
 @Service
-public class AurthCompanyUseCase {
+public class AuthCompanyUseCase {
+    @Value("${security.token.secret}")
+    private String secretKey;
 
     @Autowired
     private CompanyRepository companyRepository;
@@ -18,13 +23,16 @@ public class AurthCompanyUseCase {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public void execute(AuthCompanyDTO authCompanyDTO) throws AuthenticationException {
+    public String execute(AuthCompanyDTO authCompanyDTO) throws AuthenticationException {
         var company = companyRepository.findByUsername(authCompanyDTO.getUsername()).orElseThrow(()->{
-            throw new UsernameNotFoundException("Compania não localiozado");
+            throw new UsernameNotFoundException("Username/Password está incorreta");
         });
         var passwordMatchs= passwordEncoder.matches(authCompanyDTO.getPassword(),company.getPassword());
         if(!passwordMatchs){
             throw new AuthenticationException();
         }
+        Algorithm algorithm = Algorithm.HMAC256(secretKey);
+       var token = JWT.create().withIssuer("javagas").withSubject(company.getId().toString()).sign(algorithm);
+        return token;
     }
 }
